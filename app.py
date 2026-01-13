@@ -6,8 +6,8 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 # ---------------- CONFIG ----------------
 
 # 🔐 AWS CREDENTIALS (TEMPORARY – LOCAL ONLY)
-AWS_ACCESS_KEY_ID = "AKIAQB2V3YJLAASUOGFR"
-AWS_SECRET_ACCESS_KEY = "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"
+AWS_ACCESS_KEY_ID = ""
+AWS_SECRET_ACCESS_KEY = ""
 AWS_REGION = "eu-north-1"   # Europe (Stockholm)
 
 # 📦 S3 PARQUET LOCATION (FOLDER)
