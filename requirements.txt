@@ -1,0 +1,6 @@
+flask
+duckdb
+groq
+pandas
+pyarrow
+gunicorn

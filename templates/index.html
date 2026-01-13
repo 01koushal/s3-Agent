@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI DB Agent</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+    }
+
+    .app {
+      width: 420px;
+      max-width: 95%;
+      height: 600px;
+      background: #0b1220;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .header span {
+      opacity: 0.9;
+      font-weight: 400;
+      font-size: 13px;
+      display: block;
+    }
+
+    .chat {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: #0b1220;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bubble {
+      max-width: 75%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .user {
+      background: #2563eb;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      margin-left: auto;
+    }
+
+    .bot {
+      background: #1f2933;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      margin-right: auto;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 12px;
+      background: #020617;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .input-area button {
+      margin-left: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .input-area button:hover {
+      background: #1d4ed8;
+    }
+
+    .typing {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-bottom: 10px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <div class="header">
+      AI DB Agent 
+      <span>Ask patient-related questions in natural language</span>
+    </div>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="input-area">
+      <input id="q" placeholder="Ask about patients, locations, diseases..." />
+      <button onclick="send()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('q');
+
+    function addMessage(text, cls) {
+      const div = document.createElement('div');
+      div.className = `bubble ${cls}`;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function send() {
+      const question = input.value.trim();
+      if (!question) return;
+
+      addMessage(question, 'user');
+      input.value = '';
+
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.textContent = 'AI is thinking…';
+      chat.appendChild(typing);
+      chat.scrollTop = chat.scrollHeight;
+
+      try {
+        const res = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+
+        const data = await res.json();
+        chat.removeChild(typing);
+
+        let answer = data.answer;
+        if (typeof answer === 'object') {
+          answer = JSON.stringify(answer, null, 2);
+        }
+
+        addMessage(answer, 'bot');
+      } catch (e) {
+        chat.removeChild(typing);
+        addMessage('⚠️ Failed to reach server.', 'bot');
+      }
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') send();
+    });
+  </script>
+
+</body>
+</html>
