@@ -1,53 +1,50 @@
 import os
 import duckdb
 from groq import Groq
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 
 # ---------------- CONFIG ----------------
 
-# 🔐 AWS CREDENTIALS (TEMPORARY – LOCAL ONLY)
-AWS_ACCESS_KEY_ID = ""
-AWS_SECRET_ACCESS_KEY = ""
-AWS_REGION = "eu-north-1"   # Europe (Stockholm)
+# 🔐 AWS CREDENTIALS (FROM ENV – RENDER)
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 
 # 📦 S3 PARQUET LOCATION (FOLDER)
-S3_PARQUET_PATH = (
-    "s3://my-healthcare-analyticsdata/"
-    "data_parquet/patients/*.parquet"
+S3_PARQUET_PATH = os.environ.get(
+    "S3_PARQUET_PATH",
+    "s3://my-healthcare-analyticsdata/data_parquet/patients/*.parquet"
 )
 
 # 🤖 GROQ MODEL
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 
 # --------------------------------------
 
-
-# -------- Flask App --------
 app = Flask(__name__)
-
 
 # -------- Initialize Groq --------
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-
-# -------- Load data ONCE (important) --------
+# -------- Load data ONCE (startup) --------
 def load_data():
     print("📥 Loading Parquet data from S3...")
 
+    # Ensure AWS vars available for DuckDB
     os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
     os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
     os.environ["AWS_DEFAULT_REGION"] = AWS_REGION
 
     con = duckdb.connect(database=":memory:")
 
+    # DuckDB reads directly from S3
     con.execute(f"""
         CREATE TABLE patients AS
         SELECT * FROM read_parquet('{S3_PARQUET_PATH}');
     """)
 
-    print("✅ Parquet data loaded successfully from S3")
+    print("✅ Parquet data loaded successfully")
     return con
-
 
 # Load at startup
 con = load_data()
@@ -56,8 +53,32 @@ COLUMNS = con.execute(
     "PRAGMA table_info('patients')"
 ).fetchdf()["name"].tolist()
 
+# -------- Intent Classification --------
+def classify_intent(question):
+    prompt = f"""
+Classify the user question into ONE category:
+- analytics : questions about patient data, counts, statistics, filters
+- chat : greetings, identity, help, small talk
+- invalid : unsafe or unrelated questions
 
-# -------- Question → SQL (Groq) --------
+Return ONLY ONE WORD.
+
+Question:
+{question}
+"""
+
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": "You are an intent classifier."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0
+    )
+
+    return response.choices[0].message.content.strip().lower()
+
+# -------- Question → SQL --------
 def question_to_sql(question):
     prompt = f"""
 You are an expert data analyst.
@@ -87,22 +108,31 @@ Question:
 
     return response.choices[0].message.content.strip()
 
-
 # -------- SQL Safety --------
 def is_safe_sql(sql):
     sql = sql.lower()
     forbidden = ["drop", "delete", "update", "insert", "alter"]
     return sql.startswith("select") and not any(w in sql for w in forbidden)
 
-
-# -------- API: Ask question --------
+# -------- API --------
 @app.route("/ask", methods=["POST"])
 def ask():
-    data = request.json
-    question = data.get("question", "").strip()
+    question = request.json.get("question", "").strip()
 
     if not question:
         return jsonify({"answer": "❌ Question is required"}), 400
+
+    intent = classify_intent(question)
+
+    if intent == "chat":
+        return jsonify({
+            "answer": "🙂 I am a healthcare analytics assistant. Ask me about patient counts, statistics, and trends."
+        })
+
+    if intent == "invalid":
+        return jsonify({
+            "answer": "❌ I can only answer healthcare analytics related questions."
+        })
 
     sql = question_to_sql(question)
 
@@ -113,23 +143,19 @@ def ask():
         result = con.execute(sql).fetchdf()
 
         if len(result.columns) == 1 and len(result) == 1:
-            answer = str(result.iloc[0, 0])
-        else:
-            answer = result.to_dict(orient="records")
+            return jsonify({"answer": str(result.iloc[0, 0])})
 
-        return jsonify({"answer": answer})
+        return jsonify({"answer": result.to_dict(orient="records")})
 
     except Exception as e:
         return jsonify({"answer": f"❌ Error: {str(e)}"}), 500
 
-
-# -------- Serve UI --------
+# -------- UI --------
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-
-# -------- Run --------
+# -------- Entry Point --------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
