@@ -41,7 +41,6 @@ def load_data():
         "patients": "s3://my-healthcare-analyticsdata/data_parquet/patients/*.parquet",
         "prescriptions": "s3://my-healthcare-analyticsdata/data_parquet/prescriptions/*.parquet",
         "visits": "s3://my-healthcare-analyticsdata/data_parquet/visits/*.parquet",
-        "features": "s3://my-healthcare-analyticsdata/data_parquet/features/*.parquet"
     }
 
     for table, path in tables.items():
