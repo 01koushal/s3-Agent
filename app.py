@@ -5,16 +5,11 @@ from flask import Flask, render_template, request, jsonify
 
 # ---------------- CONFIG ----------------
 
-# 🔐 AWS CREDENTIALS (FROM ENV – RENDER)
+# 🔐 AWS CREDENTIALS (FROM ENV)
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 
-# 📦 S3 PARQUET LOCATION (FOLDER)
-S3_PARQUET_PATH = os.environ.get(
-    "S3_PARQUET_PATH",
-    "s3://my-healthcare-analyticsdata/data_parquet/patients/*.parquet"
-)
 
 # 🤖 GROQ MODEL
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -30,36 +25,58 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def load_data():
     print("📥 Loading Parquet data from S3...")
 
-    # Ensure AWS vars available for DuckDB
-    os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
-    os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
-    os.environ["AWS_DEFAULT_REGION"] = AWS_REGION
-
     con = duckdb.connect(database=":memory:")
 
-    # DuckDB reads directly from S3
-    con.execute(f"""
-        CREATE TABLE patients AS
-        SELECT * FROM read_parquet('{S3_PARQUET_PATH}');
-    """)
+    # ✅ REQUIRED FOR S3
+    con.execute("INSTALL httpfs;")
+    con.execute("LOAD httpfs;")
 
-    print("✅ Parquet data loaded successfully")
+    # ✅ EXPLICIT AWS CONFIG FOR DUCKDB
+    con.execute(f"SET s3_region='{AWS_REGION}';")
+    con.execute(f"SET s3_access_key_id='{AWS_ACCESS_KEY_ID}';")
+    con.execute(f"SET s3_secret_access_key='{AWS_SECRET_ACCESS_KEY}';")
+    con.execute("SET s3_url_style='path';")
+
+    tables = {
+        "patients": "s3://my-healthcare-analyticsdata/data_parquet/patients/*.parquet",
+        "prescriptions": "s3://my-healthcare-analyticsdata/data_parquet/prescriptions/*.parquet",
+        "visits": "s3://my-healthcare-analyticsdata/data_parquet/visits/*.parquet",
+        "features": "s3://my-healthcare-analyticsdata/data_parquet/features/*.parquet"
+    }
+
+    for table, path in tables.items():
+        print(f"➡️ Loading {table}")
+        con.execute(f"""
+            CREATE TABLE {table} AS
+            SELECT * FROM read_parquet('{path}');
+        """)
+
+    print("✅ All Parquet data loaded successfully")
     return con
 
 # Load at startup
 con = load_data()
 
-COLUMNS = con.execute(
-    "PRAGMA table_info('patients')"
-).fetchdf()["name"].tolist()
+# -------- Collect schema --------
+def get_schema(con):
+    schema = {}
+    tables = con.execute("SHOW TABLES").fetchdf()["name"].tolist()
+
+    for table in tables:
+        cols = con.execute(f"PRAGMA table_info('{table}')").fetchdf()
+        schema[table] = cols["name"].tolist()
+
+    return schema
+
+SCHEMA = get_schema(con)
 
 # -------- Intent Classification --------
 def classify_intent(question):
     prompt = f"""
 Classify the user question into ONE category:
-- analytics : questions about patient data, counts, statistics, filters
-- chat : greetings, identity, help, small talk
-- invalid : unsafe or unrelated questions
+- analytics : questions about healthcare data
+- chat : greetings or help
+- invalid : unrelated or unsafe questions
 
 Return ONLY ONE WORD.
 
@@ -80,18 +97,23 @@ Question:
 
 # -------- Question → SQL --------
 def question_to_sql(question):
-    prompt = f"""
-You are an expert data analyst.
+    schema_text = "\n".join(
+        [f"- {table}({', '.join(cols)})" for table, cols in SCHEMA.items()]
+    )
 
-Table name: patients
-Columns: {', '.join(COLUMNS)}
+    prompt = f"""
+You are an expert healthcare data analyst.
+
+Available tables:
+{schema_text}
 
 Rules:
 - Output ONLY a valid SQL query
 - SQL must start with SELECT
+- Use correct table names
+- Joins are allowed
 - Do NOT explain anything
 - Do NOT use DROP, DELETE, UPDATE, INSERT, ALTER
-- Assume all string values are lowercase
 
 Question:
 {question}
@@ -126,7 +148,7 @@ def ask():
 
     if intent == "chat":
         return jsonify({
-            "answer": "🙂 I am a healthcare analytics assistant. Ask me about patient counts, statistics, and trends."
+            "answer": "🙂 I am a healthcare analytics assistant. Ask me about patients, prescriptions, and visits."
         })
 
     if intent == "invalid":
