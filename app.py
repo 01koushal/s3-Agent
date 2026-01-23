@@ -21,6 +21,31 @@ app = Flask(__name__)
 # -------- Initialize Groq --------
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
+def format_readable(result):
+    # Single value (count, avg)
+    if len(result.columns) == 1 and len(result) == 1:
+        return str(result.iloc[0, 0])
+
+    # Single record
+    if len(result) == 1:
+        row = result.iloc[0]
+        lines = [f"{col.replace('_',' ').title()}: {row[col]}" for col in result.columns]
+        return "\n".join(lines)
+
+    # Large result set
+    if len(result) > 10:
+        return (
+            f"Found {len(result)} matching records.\n"
+            f"Example patient IDs: "
+            + ", ".join(result["patient_id"].head(5).tolist())
+        )
+
+    # Small list
+    return (
+        f"Found {len(result)} records:\n"
+        + ", ".join(result["patient_id"].tolist())
+    )
+
 # -------- Load data ONCE (startup) --------
 def load_data():
     print("📥 Loading Parquet data from S3...")
@@ -106,11 +131,16 @@ You are an expert healthcare data analyst.
 Available tables:
 {schema_text}
 
-Rules:
+IMPORTANT RULES:
+- Medical conditions (like asthma, diabetes, copd, hypertension)
+  are stored in the COLUMN patients.chronic_conditions
+- chronic_conditions is a comma-separated STRING
+- To check a condition, use:
+  patients.chronic_conditions ILIKE '%condition%'
+- DO NOT assume there is a separate table for conditions
+- ALWAYS use the patients table for age, gender, and conditions
 - Output ONLY a valid SQL query
 - SQL must start with SELECT
-- Use correct table names
-- Joins are allowed
 - Do NOT explain anything
 - Do NOT use DROP, DELETE, UPDATE, INSERT, ALTER
 
@@ -162,11 +192,8 @@ def ask():
 
     try:
         result = con.execute(sql).fetchdf()
-
-        if len(result.columns) == 1 and len(result) == 1:
-            return jsonify({"answer": str(result.iloc[0, 0])})
-
-        return jsonify({"answer": result.to_dict(orient="records")})
+        answer = format_readable(result)
+        return jsonify({"answer": answer})
 
     except Exception as e:
         return jsonify({"answer": f"❌ Error: {str(e)}"}), 500
