@@ -8,8 +8,7 @@ from flask import Flask, render_template, request, jsonify
 # 🔐 AWS CREDENTIALS (FROM ENV)
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
-
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # 🤖 GROQ MODEL
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -63,10 +62,10 @@ def load_data():
     con.execute("SET s3_url_style='path';")
 
     tables = {
-        "patients": "s3://my-healthcare-analyticsdata/data_parquet/patients/*.parquet",
-        "prescriptions": "s3://my-healthcare-analyticsdata/data_parquet/prescriptions/*.parquet",
-        "visits": "s3://my-healthcare-analyticsdata/data_parquet/visits/*.parquet",
-    }
+    "patients": "s3://my-healthcare-analytics-data/data_parquet/patients/*/*.parquet",
+    "prescriptions": "s3://my-healthcare-analytics-data/data_parquet/prescriptions/*/*.parquet",
+    "visits": "s3://my-healthcare-analytics-data/data_parquet/visits/*/*.parquet",
+}
 
     for table, path in tables.items():
         print(f"➡️ Loading {table}")
@@ -134,15 +133,20 @@ Available tables:
 IMPORTANT RULES:
 - Medical conditions (like asthma, diabetes, copd, hypertension)
   are stored in the COLUMN patients.chronic_conditions
-- chronic_conditions is a comma-separated STRING
-- To check a condition, use:
-  patients.chronic_conditions ILIKE '%condition%'
+- chronic_conditions is an ARRAY (VARCHAR[])
+- To check a condition, ALWAYS use:
+  array_contains(patients.chronic_conditions, 'condition')
+- To check if patient has ANY condition:
+  cardinality(patients.chronic_conditions) > 0
+- To check if patient has MORE THAN ONE condition:
+  cardinality(patients.chronic_conditions) > 1
 - DO NOT assume there is a separate table for conditions
 - ALWAYS use the patients table for age, gender, and conditions
 - Output ONLY a valid SQL query
 - SQL must start with SELECT
 - Do NOT explain anything
 - Do NOT use DROP, DELETE, UPDATE, INSERT, ALTER
+
 
 Question:
 {question}
