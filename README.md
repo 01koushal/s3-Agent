@@ -6,6 +6,8 @@ Instead of manually writing SQL, you can ask questions in natural language and g
 The app uses **DuckDB** to query Parquet files directly from S3 and an **LLM (Groq)** to translate questions into SQL.
 
 ---
+Deployment:https://s3-agent.onrender.com/
+---
 
 ## What this project does
 
