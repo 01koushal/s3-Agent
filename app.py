@@ -6,9 +6,9 @@ from flask import Flask, render_template, request, jsonify
 # ---------------- CONFIG ----------------
 
 # 🔐 AWS CREDENTIALS (FROM ENV)
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+#AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+#AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+#AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # 🤖 GROQ MODEL
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -47,34 +47,25 @@ def format_readable(result):
 
 # -------- Load data ONCE (startup) --------
 def load_data():
-    print("📥 Loading Parquet data from S3...")
+    print("📥 Loading CSV data...")
 
     con = duckdb.connect(database=":memory:")
 
-    # ✅ REQUIRED FOR S3
-    con.execute("INSTALL httpfs;")
-    con.execute("LOAD httpfs;")
-
-    # ✅ EXPLICIT AWS CONFIG FOR DUCKDB
-    con.execute(f"SET s3_region='{AWS_REGION}';")
-    con.execute(f"SET s3_access_key_id='{AWS_ACCESS_KEY_ID}';")
-    con.execute(f"SET s3_secret_access_key='{AWS_SECRET_ACCESS_KEY}';")
-    con.execute("SET s3_url_style='path';")
-
     tables = {
-    "patients": "s3://my-healthcare-analytics-data/data_parquet/patients/*/*.parquet",
-    "prescriptions": "s3://my-healthcare-analytics-data/data_parquet/prescriptions/*/*.parquet",
-    "visits": "s3://my-healthcare-analytics-data/data_parquet/visits/*/*.parquet",
-}
+        "patients": "D:\\s3 agent without aws\\patients.csv",
+        "prescriptions": "D:\\s3 agent without aws\\prescriptions.csv",
+        "visits": "D:\\s3 agent without aws\\visits.csv",
+    }
 
     for table, path in tables.items():
         print(f"➡️ Loading {table}")
+
         con.execute(f"""
             CREATE TABLE {table} AS
-            SELECT * FROM read_parquet('{path}');
+            SELECT * FROM read_csv_auto('{path}');
         """)
 
-    print("✅ All Parquet data loaded successfully")
+    print("✅ All CSV data loaded successfully")
     return con
 
 # Load at startup
@@ -131,15 +122,28 @@ Available tables:
 {schema_text}
 
 IMPORTANT RULES:
-- Medical conditions (like asthma, diabetes, copd, hypertension)
-  are stored in the COLUMN patients.chronic_conditions
-- chronic_conditions is an ARRAY (VARCHAR[])
-- To check a condition, ALWAYS use:
-  array_contains(patients.chronic_conditions, 'condition')
-- To check if patient has ANY condition:
-  cardinality(patients.chronic_conditions) > 0
-- To check if patient has MORE THAN ONE condition:
-  cardinality(patients.chronic_conditions) > 1
+- Medical conditions are stored in patients.chronic_conditions
+- chronic_conditions is a VARCHAR column
+- To check for a condition use:
+  lower(chronic_conditions) LIKE '%condition%'
+- Example:
+  lower(chronic_conditions) LIKE '%diabetes%'
+- The value 'none' means no chronic condition
+- Gender values are stored as 'Male' and 'Female'
+- Use case-insensitive comparisons:
+  lower(gender) = 'male'
+  lower(gender) = 'female'
+
+  IMPORTANT COLUMN TYPES
+
+patients:
+- patient_id = VARCHAR
+- gender = VARCHAR
+- smoker_status = BOOLEAN
+- alcohol_use = BOOLEAN
+- chronic_conditions = VARCHAR
+- bmi = DOUBLE
+- age = INTEGER
 - DO NOT assume there is a separate table for conditions
 - ALWAYS use the patients table for age, gender, and conditions
 - Output ONLY a valid SQL query
