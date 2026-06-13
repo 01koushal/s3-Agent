@@ -51,10 +51,12 @@ def load_data():
 
     con = duckdb.connect(database=":memory:")
 
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
     tables = {
-        "patients": "D:\\s3 agent without aws\\patients.csv",
-        "prescriptions": "D:\\s3 agent without aws\\prescriptions.csv",
-        "visits": "D:\\s3 agent without aws\\visits.csv",
+        "patients": os.path.join(BASE_DIR, "data", "patients.csv"),
+        "prescriptions": os.path.join(BASE_DIR, "data", "prescriptions.csv"),
+        "visits": os.path.join(BASE_DIR, "data", "visits.csv"),
     }
 
     for table, path in tables.items():
