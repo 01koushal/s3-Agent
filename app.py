@@ -11,7 +11,7 @@ from flask import Flask, render_template, request, jsonify
 #AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # 🤖 GROQ MODEL
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 
 # --------------------------------------
 #--
