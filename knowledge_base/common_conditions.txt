@@ -1,0 +1,25 @@
+COMMON HEALTH CONDITIONS: EDUCATIONAL OVERVIEW
+
+DIABETES
+Diabetes is a chronic condition in which blood glucose is elevated because the body does not produce enough insulin, cannot use insulin effectively, or both. Type 1 diabetes is generally caused by autoimmune destruction of insulin-producing pancreatic cells. Type 2 diabetes involves insulin resistance and relative insulin deficiency. Symptoms can include increased thirst, frequent urination, fatigue, blurred vision, and unexplained weight changes, although some people have no obvious symptoms. Diagnosis requires appropriate laboratory testing. Long-term high glucose can affect the eyes, kidneys, nerves, heart, and blood vessels. Management is individualised and may include nutrition, physical activity, monitoring, medicines, and regular clinical follow-up.
+
+HYPERTENSION
+Hypertension means persistently elevated blood pressure. It often has no symptoms, which is why accurate measurement and follow-up matter. Risk factors can include age, family history, high-sodium diet, physical inactivity, tobacco use, excess alcohol, and some medical conditions. Long-term uncontrolled hypertension increases the risk of stroke, heart disease, kidney disease, and other complications. Diagnosis is based on properly measured blood pressure over time, not a single chatbot interaction. Management may include lifestyle changes and prescribed medicines. Severe symptoms such as chest pain, breathlessness, weakness on one side, confusion, or sudden severe headache require urgent medical assessment.
+
+ASTHMA
+Asthma is a chronic condition involving inflammation and narrowing of the airways. Symptoms may include wheezing, cough, chest tightness, and shortness of breath, and can vary over time. Triggers differ between people and may include respiratory infections, allergens, smoke, exercise, or air pollution. Diagnosis and an asthma action plan should be developed with a clinician. Inhaler technique and using prescribed reliever or controller medicines as directed are important. Severe breathing difficulty or poor response to prescribed emergency treatment requires urgent care.
+
+PNEUMONIA
+Pneumonia is an infection that inflames air sacs in one or both lungs. It may be caused by bacteria, viruses, or other organisms. Symptoms can include cough, fever, chills, chest discomfort, and difficulty breathing. The appropriate assessment and treatment depend on age, severity, likely cause, and other health conditions. Breathing difficulty, confusion, bluish lips, or rapidly worsening illness require urgent assessment.
+
+CARDIOVASCULAR DISEASE
+Cardiovascular disease refers to conditions affecting the heart and blood vessels. Risk factors include high blood pressure, abnormal cholesterol, diabetes, tobacco use, physical inactivity, and family history. A heart attack may cause chest pressure or pain, breathlessness, sweating, nausea, or discomfort in the arm, back, neck, or jaw; symptoms can vary. Stroke warning signs can include sudden facial drooping, arm weakness, speech difficulty, sudden vision or balance problems, or a sudden severe headache. Suspected heart attack or stroke is an emergency: seek emergency medical help immediately.
+
+ANEMIA
+Anemia is a condition in which the blood has a reduced capacity to carry oxygen, commonly because haemoglobin or red blood cells are low. Causes include iron deficiency, vitamin deficiencies, chronic disease, inherited conditions, or blood loss. Symptoms may include tiredness, weakness, dizziness, or shortness of breath. Diagnosis requires blood tests and evaluation of the underlying cause. Treatment depends on that cause; iron should not be started automatically without appropriate assessment.
+
+DENGUE
+Dengue is a mosquito-borne viral infection. Symptoms can include fever, headache, body aches, nausea, rash, and pain behind the eyes. Some cases develop severe warning signs, including severe abdominal pain, persistent vomiting, bleeding, unusual drowsiness, or difficulty breathing. Suspected dengue should be assessed by a healthcare professional. Avoid self-medicating; some medicines can increase bleeding risk. Follow local public-health guidance for mosquito-bite prevention.
+
+GENERAL SAFETY
+These summaries are for general education and are not a diagnosis. Symptoms overlap across conditions, and only a qualified healthcare professional can assess an individual. Seek emergency help for severe, sudden, or rapidly worsening symptoms. The RAG system should answer from retrieved reference material and acknowledge when the available documents do not contain enough information.

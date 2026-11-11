@@ -1,6 +1,11 @@
-flask
-duckdb
-groq
-pandas
-pyarrow
-gunicorn
+Flask>=3.0
+python-dotenv>=1.0
+duckdb>=1.1
+groq>=0.11
+pandas>=2.0
+numpy>=1.26
+faiss-cpu>=1.8
+google-genai>=1.0
+nltk>=3.8
+scikit-learn>=1.4
+gunicorn>=21.2

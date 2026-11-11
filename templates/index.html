@@ -1,459 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#090d16" />
-  <title>S3 Agent — AI Data Analyst</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:#090d16; --panel:#0e1421; --panel-2:#111a2a; --panel-3:#151f31;
-      --line:rgba(160,180,210,.12); --line-strong:rgba(160,180,210,.2);
-      --text:#edf3ff; --muted:#8d9bb2; --muted-2:#66758d;
-      --blue:#6d9cff; --blue-2:#3978f6; --cyan:#65d6e8;
-      --green:#63d6a3; --shadow:0 24px 80px rgba(0,0,0,.38);
-      --sidebar:260px;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0}
-    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
-    button,input,textarea{font:inherit}
-    button{cursor:pointer}
-    .app{height:100%;display:flex;background:
-      radial-gradient(ellipse at 70% -15%,rgba(48,91,170,.13),transparent 42%),
-      radial-gradient(ellipse at 5% 100%,rgba(38,104,130,.08),transparent 35%),var(--bg)}
-    .sidebar{width:var(--sidebar);flex:0 0 var(--sidebar);height:100%;display:flex;flex-direction:column;
-      background:rgba(12,18,29,.92);border-right:1px solid var(--line);padding:22px 15px 16px;transition:width .25s,flex-basis .25s;z-index:5}
-    .brand{display:flex;align-items:center;gap:11px;padding:2px 9px 25px}
-    .brand-mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;
-      background:linear-gradient(145deg,#77a7ff,#3972ec);box-shadow:0 7px 24px rgba(57,120,246,.28)}
-    .brand-mark svg{width:20px;height:20px}
-    .brand-name{font:700 17px 'Space Grotesk',sans-serif;letter-spacing:-.5px}
-    .brand-sub{font-size:10px;color:var(--muted);letter-spacing:1.35px;text-transform:uppercase;margin-top:2px}
-    .new-chat{height:43px;width:100%;border:1px solid rgba(109,156,255,.28);border-radius:11px;
-      background:linear-gradient(110deg,rgba(57,120,246,.19),rgba(57,120,246,.08));color:#dce8ff;
-      display:flex;align-items:center;justify-content:center;gap:9px;font-weight:600;transition:.2s}
-    .new-chat:hover{background:rgba(57,120,246,.24);border-color:rgba(109,156,255,.55);transform:translateY(-1px)}
-    .nav-label{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted-2);font-weight:700;padding:25px 10px 10px}
-    .nav-link{width:100%;border:0;background:transparent;color:#aebbd0;padding:10px;border-radius:9px;
-      display:flex;align-items:center;gap:11px;text-align:left;font-size:13px;transition:.18s}
-    .nav-link:hover,.nav-link.active{background:rgba(126,157,207,.09);color:#edf3ff}
-    .nav-link svg{width:17px;height:17px;color:#8294b1;flex:none}
-    .history-list{overflow:auto;min-height:0}
-    .history-item{width:100%;padding:9px 10px;border:0;background:transparent;color:#9baac1;text-align:left;
-      border-radius:8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .history-item:hover{background:rgba(126,157,207,.08);color:#eef4ff}
-    .sidebar-bottom{margin-top:auto;border-top:1px solid var(--line);padding-top:13px}
-    .engine-card{margin:0 3px 13px;padding:12px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.018)}
-    .engine-title{font-size:11px;color:#d5deed;font-weight:600;margin-bottom:9px}
-    .engine-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0}
-    .engine-value{color:#b9c8df;display:flex;align-items:center;gap:6px}
-    .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(99,214,163,.5)}
-    .profile{display:flex;align-items:center;gap:10px;padding:9px 7px}
-    .avatar{width:31px;height:31px;border-radius:10px;background:linear-gradient(145deg,#253c61,#17263d);
-      display:grid;place-items:center;color:#c9dcff;font-weight:700;font-size:12px}
-    .profile-name{font-size:12px;font-weight:600}.profile-caption{font-size:10px;color:var(--muted);margin-top:2px}
-    .main{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;position:relative}
-    .topbar{height:66px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px}
-    .top-left{display:flex;align-items:center;gap:13px}
-    .menu-btn{display:none;width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;color:#c8d5e8}
-    .breadcrumb{font-size:12px;color:var(--muted)}.breadcrumb strong{color:#e5edfb;font-weight:600}
-    .top-right{display:flex;align-items:center;gap:10px}
-    .status-pill{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--line);border-radius:20px;color:#a8b8d0;font-size:11px}
-    .status-pill .dot{width:6px;height:6px}
-    .icon-btn{width:34px;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:#9eacc2;border-radius:9px;display:grid;place-items:center}
-    .icon-btn:hover{color:#fff;background:rgba(255,255,255,.07)}
-    .icon-btn svg{width:16px;height:16px}
-    .workspace{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}
-    .welcome{width:min(900px,calc(100% - 48px));margin:auto;padding:46px 0 70px;animation:rise .55s ease both}
-    @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid rgba(109,156,255,.2);
-      border-radius:20px;background:rgba(57,120,246,.07);color:#a9c6ff;font-size:11px;font-weight:600;letter-spacing:.3px}
-    .eyebrow svg{width:14px;height:14px}
-    h1{font:600 clamp(34px,5vw,53px)/1.12 'Space Grotesk',sans-serif;letter-spacing:-2.3px;margin:22px 0 13px;max-width:720px}
-    h1 .gradient{background:linear-gradient(95deg,#f1f6ff 5%,#9bbcff 52%,#72d8e8 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-    .hero-copy{color:#91a0b7;font-size:15px;line-height:1.75;max-width:570px;margin:0 0 31px}
-    .composer{border:1px solid rgba(137,166,214,.22);border-radius:17px;background:rgba(16,25,40,.88);
-      box-shadow:0 15px 55px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.025);padding:14px;transition:.2s}
-    .composer:focus-within{border-color:rgba(109,156,255,.58);box-shadow:0 0 0 3px rgba(57,120,246,.09),0 15px 55px rgba(0,0,0,.25)}
-    .composer textarea{width:100%;min-height:52px;max-height:150px;resize:none;border:0;outline:0;background:transparent;color:#eef4ff;
-      font-size:14px;line-height:1.6;padding:7px 7px 12px}
-    .composer textarea::placeholder{color:#687991}
-    .composer-bottom{display:flex;align-items:center;justify-content:space-between;padding:0 3px 0 6px}
-    .composer-hint{font-size:10px;color:#687991}
-    .send-btn{width:36px;height:36px;border:0;border-radius:11px;background:linear-gradient(140deg,#6da0ff,#3978f6);color:#fff;
-      display:grid;place-items:center;box-shadow:0 5px 18px rgba(57,120,246,.25);transition:.2s}
-    .send-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
-    .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
-    .send-btn svg{width:17px;height:17px}
-    .section-head{display:flex;align-items:center;justify-content:space-between;margin:34px 0 13px}
-    .section-title{font:600 13px 'Space Grotesk',sans-serif;color:#d9e4f5}
-    .section-caption{font-size:10px;color:#70819a}
-    .suggestions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-    .suggestion{min-height:104px;padding:15px;border:1px solid var(--line);border-radius:13px;background:rgba(17,27,43,.55);
-      color:var(--text);text-align:left;transition:.2s;display:flex;flex-direction:column;gap:11px}
-    .suggestion:hover{background:rgba(26,42,66,.75);border-color:rgba(109,156,255,.35);transform:translateY(-2px)}
-    .suggestion-top{display:flex;align-items:center;justify-content:space-between}
-    .suggestion-icon{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:rgba(104,151,255,.11);color:#8db2ff}
-    .suggestion-icon svg{width:15px;height:15px}
-    .suggestion-arrow{color:#647791;font-size:15px}
-    .suggestion strong{font-size:12px;font-weight:600;color:#dce6f6}
-    .suggestion span:last-child{font-size:11px;line-height:1.5;color:#8292aa}
-    .workspace-note{font-size:10px;color:#5f6f86;margin-top:23px;display:flex;align-items:center;gap:7px}
-    .workspace-note svg{width:13px;height:13px}
-    .chat-view{display:none;width:min(850px,calc(100% - 48px));margin:0 auto;padding:34px 0 24px;flex-direction:column;gap:27px}
-    .chat-view.visible{display:flex}
-    .welcome.hidden{display:none}
-    .message{display:flex;gap:12px;animation:rise .25s ease both}
-    .message.user-message{justify-content:flex-end}
-    .message-avatar{width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center;background:#172640;color:#8fb3ff}
-    .message-avatar svg{width:16px;height:16px}
-    .message-content{max-width:min(760px,calc(100% - 44px));min-width:0}
-    .message-meta{font-size:10px;color:#7889a2;margin:0 0 7px 2px}
-    .message-body{font-size:13px;line-height:1.8;color:#d3deed;white-space:pre-wrap;overflow-wrap:anywhere}
-    .user-message .message-body{background:#172943;border:1px solid rgba(109,156,255,.16);padding:11px 15px;border-radius:14px 14px 4px 14px;color:#eaf2ff}
-    .assistant-message .message-body{padding:2px 2px 0}
-    .message-actions{display:flex;gap:7px;margin-top:10px}
-    .mini-action{border:1px solid var(--line);background:transparent;color:#7f91aa;border-radius:7px;padding:5px 8px;font-size:10px}
-    .mini-action:hover{color:#dce8fa;background:rgba(255,255,255,.04)}
-    .typing{display:flex;gap:5px;padding:10px 2px}
-    .typing span{width:5px;height:5px;border-radius:50%;background:#83aaff;animation:pulse 1s infinite}
-    .typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
-    @keyframes pulse{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}
-    .chat-composer-wrap{width:min(850px,calc(100% - 48px));margin:0 auto 19px;flex:none}
-    .chat-composer-wrap .composer{padding:10px 13px}
-    .chat-composer-wrap textarea{min-height:39px;padding:5px}
-    .chat-composer-wrap .composer-hint{display:none}
-    .footer-note{text-align:center;color:#596a82;font-size:10px;margin-top:9px}
-    .toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,15px);opacity:0;pointer-events:none;
-      padding:10px 14px;border:1px solid var(--line-strong);border-radius:10px;background:#172337;color:#e2ebfa;font-size:12px;
-      box-shadow:var(--shadow);transition:.25s;z-index:20}
-    .toast.show{opacity:1;transform:translate(-50%,0)}
-    .mobile-overlay{display:none}
-    @media(max-width:900px){:root{--sidebar:230px}.suggestions{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{padding:0 20px}}
-    @media(max-width:650px){
-      body{overflow:hidden}.sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;transform:translateX(-102%);transition:transform .25s;box-shadow:var(--shadow)}
-      .sidebar.open{transform:translateX(0)}.mobile-overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:4}
-      .menu-btn{display:grid;place-items:center}.topbar{height:58px;padding:0 14px}.status-pill{font-size:10px}
-      .welcome{width:calc(100% - 34px);padding:39px 0 48px}h1{letter-spacing:-1.5px}.hero-copy{font-size:13px}
-      .suggestions{grid-template-columns:1fr 1fr;gap:8px}.suggestion{min-height:112px;padding:12px}
-      .chat-view,.chat-composer-wrap{width:calc(100% - 30px)}.chat-view{padding-top:24px;gap:22px}
-      .message-content{max-width:calc(100% - 42px)}.composer textarea{font-size:13px}
-    }
-    @media(max-width:390px){.suggestions{grid-template-columns:1fr}.suggestion{min-height:88px}.status-pill{display:none}}
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S3 Agent — Healthcare NLP Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4.5 7.7 7.5 4.4 7.5-4.4M12 12.1V21M8 5.2l8 4.6"/></svg>
-      </div>
-      <div><div class="brand-name">S3 Agent</div><div class="brand-sub">AI Data Workspace</div></div>
-    </div>
-
-    <button class="new-chat" id="newChat">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-      New conversation
-    </button>
-
-    <div class="nav-label">Workspace</div>
-    <button class="nav-link active" id="homeNav">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
-      New analysis
-    </button>
-    <button class="nav-link" id="examplesNav">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>
-      Example questions
-    </button>
-
-    <div class="nav-label">Recent conversations</div>
-    <div class="history-list" id="historyList"></div>
-
-    <div class="sidebar-bottom">
-      <div class="engine-card">
-        <div class="engine-title">Your analytics engine</div>
-        <div class="engine-row"><span>Language model</span><span class="engine-value">Groq</span></div>
-        <div class="engine-row"><span>Query engine</span><span class="engine-value">DuckDB</span></div>
-        <div class="engine-row"><span>Backend</span><span class="engine-value">Flask</span></div>
-      </div>
-      <div class="profile">
-        <div class="avatar">S3</div>
-        <div><div class="profile-name">S3 Agent</div><div class="profile-caption">AI-powered data analyst</div></div>
-      </div>
-    </div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">✦</div><div><b>S3 Agent</b><small>HEALTHCARE NLP WORKSPACE</small></div></div>
+    <div class="side-label">WORKSPACE</div>
+    <button class="nav active" data-view="chat">✧ &nbsp; Ask a question</button>
+    <button class="nav" data-view="evaluation">▥ &nbsp; NLP evaluation</button>
+    <div class="side-label">PROCESSING ENGINES</div>
+    <div class="engine"><span>Intent classifier</span><b>TF-IDF + Logistic Regression</b></div>
+    <div class="engine"><span>Analytics</span><b>Groq + DuckDB</b></div>
+    <div class="engine"><span>Knowledge retrieval</span><b>Gemini + FAISS + Groq</b></div>
+    <div class="side-foot">Educational healthcare analytics<br>Not for diagnosis or treatment.</div>
   </aside>
-
-  <div class="mobile-overlay" id="mobileOverlay"></div>
-
   <main class="main">
-    <header class="topbar">
-      <div class="top-left">
-        <button class="menu-btn" id="menuBtn" aria-label="Open navigation">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <div class="breadcrumb">Workspace <span style="color:#53647c;margin:0 6px">/</span> <strong id="pageTitle">New analysis</strong></div>
-      </div>
-      <div class="top-right">
-        <div class="status-pill"><span class="dot"></span> AI assistant ready</div>
-        <button class="icon-btn" id="clearBtn" title="Clear current conversation" aria-label="Clear conversation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <section class="workspace" id="workspace">
-      <div class="welcome" id="welcome">
-        <div class="eyebrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/></svg>
-          INTELLIGENT DATA ANALYSIS
-        </div>
-        <h1>Your data has answers.<br><span class="gradient">Just ask.</span></h1>
-        <p class="hero-copy">Explore your healthcare datasets with natural language. Ask a question, let AI translate it into a query, and get insights without writing SQL.</p>
-
-        <div class="composer" id="mainComposer">
-          <textarea id="questionInput" rows="1" placeholder="Ask anything about your data..."></textarea>
-          <div class="composer-bottom">
-            <span class="composer-hint">Press Enter to send · Shift + Enter for a new line</span>
-            <button class="send-btn" id="sendBtn" aria-label="Send question">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4 14-3-6z"/><path d="m12 13 7-8"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="section-head">
-          <div class="section-title">Try asking something</div>
-          <div class="section-caption">SUGGESTED QUESTIONS</div>
-        </div>
-        <div class="suggestions">
-          <button class="suggestion" data-query="How many patients are in the dataset?">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6m3-3h-6"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Patient overview</strong><span>How many patients are in the dataset?</span>
-          </button>
-          <button class="suggestion" data-query="How many patients have diabetes?">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Health conditions</strong><span>How many patients have diabetes?</span>
-          </button>
-          <button class="suggestion" data-query="Show the gender distribution of patients.">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM12 17v4m-3-2h6"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Demographics</strong><span>Show the gender distribution of patients.</span>
-          </button>
-          <button class="suggestion" data-query="What are the most common prescriptions?">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m10 14 4-4m-6 8 8-8a4.2 4.2 0 0 0-6-6l-8 8a4.2 4.2 0 0 0 6 6Z"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Prescriptions</strong><span>What are the most common prescriptions?</span>
-          </button>
-          <button class="suggestion" data-query="Show the total number of patient visits.">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18m-12 4h6"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Patient visits</strong><span>Show the total number of patient visits.</span>
-          </button>
-          <button class="suggestion" data-query="Calculate the average BMI of patients.">
-            <div class="suggestion-top"><span class="suggestion-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18M7 14l4-4 4 3 6-7"/></svg></span><span class="suggestion-arrow">↗</span></div>
-            <strong>Advanced analytics</strong><span>Calculate the average BMI of patients.</span>
-          </button>
-        </div>
-        <div class="workspace-note">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
-          AI-generated answers should be reviewed before being used for clinical or operational decisions.
+    <header><div><span class="muted">Workspace /</span> <b id="headerTitle">Ask a question</b></div><div id="status" class="status">Checking services…</div></header>
+    <section id="chatView" class="view chat-view">
+      <div id="emptyState" class="empty-state">
+        <div class="eyebrow">NATURAL LANGUAGE PROCESSING · RAG · TEXT-TO-SQL</div>
+        <h1>Healthcare answers,<br><em>one conversation.</em></h1>
+        <p>Ask general healthcare questions or analyse structured hospital data. S3 Agent identifies the intent and selects the right engine.</p>
+        <div class="examples">
+          <button data-q="Hi, who are you?"><b>Meet S3 Agent</b><span>Chat and assistant capabilities</span></button>
+          <button data-q="What are the symptoms and risk factors of diabetes?"><b>Healthcare knowledge</b><span>Diseases, medicines and hospital information</span></button>
+          <button data-q="How many patients have diabetes?"><b>Dataset analytics</b><span>Counts, averages and trends using SQL</span></button>
         </div>
       </div>
-
-      <div class="chat-view" id="chatView" aria-live="polite"></div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <div class="composer-dock">
+        <div class="composer-wrap">
+          <div class="composer"><textarea id="question" rows="1" placeholder="Message S3 Agent…"></textarea><button id="send">Send ↗</button></div>
+          <div class="composer-note">NLP detects the intent · RAG answers knowledge questions · Text-to-SQL analyses dataset questions</div>
+        </div>
+      </div>
     </section>
-
-    <div class="chat-composer-wrap" id="chatComposerWrap" style="display:none">
-      <div class="composer">
-        <textarea id="chatInput" rows="1" placeholder="Ask a follow-up question..."></textarea>
-        <div class="composer-bottom">
-          <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
-          <button class="send-btn" id="chatSendBtn" aria-label="Send follow-up">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4 14-3-6-6-2z"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="footer-note">S3 Agent can make mistakes. Verify important results.</div>
-    </div>
+    <section id="evaluationView" class="view hidden">
+      <div class="page-head"><div class="eyebrow">MODEL EVALUATION</div><h1>NLP evaluation</h1><p>Holdout evaluation of the included intent classification dataset.</p></div>
+      <button id="loadMetrics" class="primary">Run evaluation</button>
+      <pre id="metrics" class="metrics">Click “Run evaluation” to calculate metrics.</pre>
+    </section>
   </main>
 </div>
-<div class="toast" id="toast"></div>
-
-<script>
-(() => {
-  const $ = (id) => document.getElementById(id);
-  const welcome = $('welcome'), chatView = $('chatView');
-  const mainInput = $('questionInput'), chatInput = $('chatInput');
-  const chatComposerWrap = $('chatComposerWrap');
-  const historyKey = 's3agent_conversations_v1';
-  let conversations = loadHistory();
-  let currentId = null;
-  let messages = [];
-  let busy = false;
-
-  function loadHistory() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(historyKey) || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch { return []; }
-  }
-  function persistHistory() {
-    try { localStorage.setItem(historyKey, JSON.stringify(conversations.slice(0, 30))); }
-    catch { toast('Could not save conversation history in this browser.'); }
-    renderHistory();
-  }
-  function toast(message) {
-    const el = $('toast'); el.textContent = message; el.classList.add('show');
-    clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 2400);
-  }
-  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  function setMode(isChat) {
-    welcome.classList.toggle('hidden', isChat);
-    chatView.classList.toggle('visible', isChat);
-    chatComposerWrap.style.display = isChat ? 'block' : 'none';
-    $('pageTitle').textContent = isChat ? 'Conversation' : 'New analysis';
-    $('homeNav').classList.toggle('active', !isChat);
-    if (isChat) setTimeout(() => chatInput.focus(), 50);
-  }
-  function startNewChat() {
-    currentId = null; messages = []; chatView.innerHTML = '';
-    mainInput.value = ''; chatInput.value = '';
-    setMode(false); closeSidebar(); mainInput.focus();
-  }
-  function renderHistory() {
-    const list = $('historyList'); list.innerHTML = '';
-    conversations.slice(0, 12).forEach(item => {
-      const btn = document.createElement('button');
-      btn.className = 'history-item'; btn.textContent = item.title || 'New conversation';
-      btn.title = item.title || 'New conversation';
-      btn.addEventListener('click', () => openConversation(item.id));
-      list.appendChild(btn);
-    });
-    if (!conversations.length) {
-      const empty = document.createElement('div');
-      empty.style.cssText = 'padding:5px 10px;color:#61718a;font-size:11px';
-      empty.textContent = 'Your conversations will appear here';
-      list.appendChild(empty);
-    }
-  }
-  function openConversation(id) {
-    const item = conversations.find(x => x.id === id); if (!item) return;
-    currentId = item.id; messages = item.messages || [];
-    chatView.innerHTML = ''; setMode(true); closeSidebar();
-    messages.forEach(m => appendMessage(m.role, m.content, false));
-    scrollToBottom();
-  }
-  function saveConversation() {
-    if (!messages.length) return;
-    if (!currentId) currentId = newId();
-    const firstUser = messages.find(m => m.role === 'user');
-    const title = (firstUser?.content || 'New conversation').slice(0, 48);
-    const existing = conversations.findIndex(x => x.id === currentId);
-    const item = { id: currentId, title, messages, updatedAt: Date.now() };
-    if (existing >= 0) conversations.splice(existing, 1);
-    conversations.unshift(item); persistHistory();
-  }
-  function appendMessage(role, content, store = true) {
-    const row = document.createElement('div');
-    row.className = 'message ' + (role === 'user' ? 'user-message' : 'assistant-message');
-    if (role === 'assistant') {
-      const avatar = document.createElement('div'); avatar.className = 'message-avatar';
-      avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/></svg>';
-      row.appendChild(avatar);
-    }
-    const contentWrap = document.createElement('div'); contentWrap.className = 'message-content';
-    const meta = document.createElement('div'); meta.className = 'message-meta';
-    meta.textContent = role === 'user' ? 'You' : 'S3 Agent · AI Analyst';
-    const body = document.createElement('div'); body.className = 'message-body';
-    body.textContent = content;
-    contentWrap.append(meta, body);
-    if (role === 'assistant') {
-      const actions = document.createElement('div'); actions.className = 'message-actions';
-      const copy = document.createElement('button'); copy.className = 'mini-action'; copy.textContent = 'Copy response';
-      copy.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(content); toast('Response copied'); }
-        catch { toast('Clipboard access unavailable'); }
-      });
-      actions.appendChild(copy); contentWrap.appendChild(actions);
-    }
-    row.appendChild(contentWrap); chatView.appendChild(row);
-    if (store) { messages.push({ role, content }); saveConversation(); }
-    scrollToBottom();
-    return row;
-  }
-  function showTyping() {
-    const row = document.createElement('div'); row.className = 'message assistant-message'; row.id = 'typingIndicator';
-    const avatar = document.createElement('div'); avatar.className = 'message-avatar';
-    avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/></svg>';
-    const wrap = document.createElement('div'); wrap.className = 'message-content';
-    const meta = document.createElement('div'); meta.className = 'message-meta'; meta.textContent = 'S3 Agent is analyzing your question';
-    const dots = document.createElement('div'); dots.className = 'typing'; dots.innerHTML = '<span></span><span></span><span></span>';
-    wrap.append(meta, dots); row.append(avatar, wrap); chatView.appendChild(row); scrollToBottom();
-  }
-  function scrollToBottom() { $('workspace').scrollTop = $('workspace').scrollHeight; }
-  function resizeTextarea(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
-  async function sendQuestion(source) {
-    const question = source.value.trim();
-    if (!question || busy) return;
-    busy = true;
-    $('sendBtn').disabled = true; $('chatSendBtn').disabled = true;
-    if (!messages.length) setMode(true);
-    appendMessage('user', question);
-    source.value = ''; resizeTextarea(source);
-    showTyping();
-    try {
-      const response = await fetch('/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question })
-      });
-      let data;
-      try { data = await response.json(); }
-      catch { throw new Error('The server returned an unreadable response.'); }
-      $('typingIndicator')?.remove();
-      if (!response.ok) throw new Error(data.answer || `Request failed (${response.status})`);
-      let answer = data.answer;
-      if (answer === undefined || answer === null) answer = 'The server returned an empty response.';
-      if (typeof answer === 'object') answer = JSON.stringify(answer, null, 2);
-      appendMessage('assistant', String(answer));
-    } catch (error) {
-      $('typingIndicator')?.remove();
-      appendMessage('assistant', 'I couldn’t complete that request. ' + (error.message || 'Please try again.'));
-    } finally {
-      busy = false; $('sendBtn').disabled = false; $('chatSendBtn').disabled = false;
-      chatInput.focus();
-    }
-  }
-
-  $('newChat').addEventListener('click', startNewChat);
-  $('homeNav').addEventListener('click', startNewChat);
-  $('examplesNav').addEventListener('click', () => { startNewChat(); $('welcome').scrollIntoView({behavior:'smooth'}); });
-  $('clearBtn').addEventListener('click', () => {
-    if (messages.length && confirm('Clear this conversation? It will remain in Recent conversations.')) startNewChat();
-    else if (!messages.length) toast('Nothing to clear');
-  });
-  $('sendBtn').addEventListener('click', () => sendQuestion(mainInput));
-  $('chatSendBtn').addEventListener('click', () => sendQuestion(chatInput));
-  [mainInput, chatInput].forEach(el => {
-    el.addEventListener('input', () => resizeTextarea(el));
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(el); }
-    });
-  });
-  document.querySelectorAll('.suggestion').forEach(card => {
-    card.addEventListener('click', () => {
-      mainInput.value = card.dataset.query;
-      sendQuestion(mainInput);
-    });
-  });
-  function closeSidebar() { $('sidebar').classList.remove('open'); $('mobileOverlay').classList.remove('show'); }
-  $('menuBtn').addEventListener('click', () => {
-    $('sidebar').classList.toggle('open'); $('mobileOverlay').classList.toggle('show');
-  });
-  $('mobileOverlay').addEventListener('click', closeSidebar);
-  renderHistory();
-})();
-</script>
-</body>
-</html>
+<script src="/static/js/app.js"></script>
+</body></html>

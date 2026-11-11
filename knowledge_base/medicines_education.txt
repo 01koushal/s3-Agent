@@ -1,0 +1,25 @@
+MEDICINES: GENERAL EDUCATION AND SAFE USE
+
+Medicines are used to prevent, diagnose, control, or treat health conditions. The correct medicine depends on the person's diagnosis, age, medical history, allergies, pregnancy status, kidney and liver function, other medicines, and clinical assessment. This document is educational and must not be used to select a medicine or dose for an individual.
+
+Medicine categories:
+- Analgesics are used to relieve pain. Different pain relievers have different risks and are not suitable for everyone.
+- Antibiotics treat certain bacterial infections. They do not treat viral illnesses such as most common colds. Unnecessary use contributes to antimicrobial resistance. Use antibiotics only when prescribed and follow the prescriber's instructions.
+- Antihistamines are used for some allergy symptoms. Some can cause drowsiness and interact with other substances.
+- Antihypertensive medicines help manage high blood pressure. Common classes include ACE inhibitors, angiotensin receptor blockers, calcium-channel blockers, and diuretics. Choice and monitoring require a clinician.
+- Diabetes medicines include insulin and several non-insulin classes. Treatment is individualised and may require monitoring of blood glucose and awareness of low blood sugar.
+- Statins and other lipid-lowering medicines may be prescribed to reduce cardiovascular risk for selected people. Benefits and possible adverse effects should be discussed with a clinician.
+- Inhaled medicines may be used for asthma or other respiratory conditions. Correct inhaler technique is important; a clinician or pharmacist can demonstrate it.
+
+Safe medicine practices:
+1. Use medicines only for the person and purpose for which they were prescribed or recommended by an authorised professional.
+2. Follow the label and prescription. Do not guess, double a missed dose, stop long-term treatment, or change the dose based on chatbot output.
+3. Tell the clinician and pharmacist about prescription medicines, over-the-counter products, herbal products, supplements, allergies, and prior adverse reactions.
+4. Check the active ingredient to avoid accidentally taking two products containing the same ingredient.
+5. Store medicines as directed, keep them away from children, and do not use expired products.
+6. Ask a pharmacist how to dispose of unused medicines safely.
+7. Seek urgent help for severe allergic reactions, difficulty breathing, fainting, or other severe or rapidly worsening symptoms.
+
+Side effects and interactions: A side effect is an unwanted effect that can occur when using a medicine. Interactions can occur between medicines, supplements, foods, or alcohol. The likelihood and seriousness vary. A pharmacist or prescribing clinician is the appropriate person to check a specific combination.
+
+Never rely on a general chatbot answer for a personalised medicine choice, dose, or treatment plan. The system should direct individual medication questions to a qualified healthcare professional.

@@ -1,219 +1,85 @@
 import os
-import duckdb
-from groq import Groq
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
 
-# ---------------- CONFIG ----------------
+from nlp_engine import IntentEngine
+from analytics_engine import AnalyticsEngine
+from rag_engine import RAGEngine
 
-# 🔐 AWS CREDENTIALS (FROM ENV)
-#AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-#AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-#AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-
-# 🤖 GROQ MODEL
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
-
-# --------------------------------------
-#--
+load_dotenv()
 app = Flask(__name__)
 
-# -------- Initialize Groq --------
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+intent_engine = IntentEngine()
+analytics_engine = AnalyticsEngine()
+rag_engine = RAGEngine()
 
-def format_readable(result):
-    # Single value (count, avg)
-    if len(result.columns) == 1 and len(result) == 1:
-        return str(result.iloc[0, 0])
-
-    # Single record
-    if len(result) == 1:
-        row = result.iloc[0]
-        lines = [f"{col.replace('_',' ').title()}: {row[col]}" for col in result.columns]
-        return "\n".join(lines)
-
-    # Large result set
-    if len(result) > 10:
-        return (
-            f"Found {len(result)} matching records.\n"
-            f"Example patient IDs: "
-            + ", ".join(result["patient_id"].head(5).tolist())
-        )
-
-    # Small list
-    return (
-        f"Found {len(result)} records:\n"
-        + ", ".join(result["patient_id"].tolist())
-    )
-
-# -------- Load data ONCE (startup) --------
-def load_data():
-    print("📥 Loading CSV data...")
-
-    con = duckdb.connect(database=":memory:")
-
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    tables = {
-        "patients": os.path.join(BASE_DIR, "data", "patients.csv"),
-        "prescriptions": os.path.join(BASE_DIR, "data", "prescriptions.csv"),
-        "visits": os.path.join(BASE_DIR, "data", "visits.csv"),
-    }
-
-    for table, path in tables.items():
-        print(f"➡️ Loading {table}")
-
-        con.execute(f"""
-            CREATE TABLE {table} AS
-            SELECT * FROM read_csv_auto('{path}');
-        """)
-
-    print("✅ All CSV data loaded successfully")
-    return con
-
-# Load at startup
-con = load_data()
-
-# -------- Collect schema --------
-def get_schema(con):
-    schema = {}
-    tables = con.execute("SHOW TABLES").fetchdf()["name"].tolist()
-
-    for table in tables:
-        cols = con.execute(f"PRAGMA table_info('{table}')").fetchdf()
-        schema[table] = cols["name"].tolist()
-
-    return schema
-
-SCHEMA = get_schema(con)
-
-# -------- Intent Classification --------
-def classify_intent(question):
-    prompt = f"""
-Classify the user question into ONE category:
-- analytics : questions about healthcare data
-- chat : greetings or help
-- invalid : unrelated or unsafe questions
-
-Return ONLY ONE WORD.
-
-Question:
-{question}
-"""
-
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
-            {"role": "system", "content": "You are an intent classifier."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0
-    )
-
-    return response.choices[0].message.content.strip().lower()
-
-# -------- Question → SQL --------
-def question_to_sql(question):
-    schema_text = "\n".join(
-        [f"- {table}({', '.join(cols)})" for table, cols in SCHEMA.items()]
-    )
-
-    prompt = f"""
-You are an expert healthcare data analyst.
-
-Available tables:
-{schema_text}
-
-IMPORTANT RULES:
-- Medical conditions are stored in patients.chronic_conditions
-- chronic_conditions is a VARCHAR column
-- To check for a condition use:
-  lower(chronic_conditions) LIKE '%condition%'
-- Example:
-  lower(chronic_conditions) LIKE '%diabetes%'
-- The value 'none' means no chronic condition
-- Gender values are stored as 'Male' and 'Female'
-- Use case-insensitive comparisons:
-  lower(gender) = 'male'
-  lower(gender) = 'female'
-
-  IMPORTANT COLUMN TYPES
-
-patients:
-- patient_id = VARCHAR
-- gender = VARCHAR
-- smoker_status = BOOLEAN
-- alcohol_use = BOOLEAN
-- chronic_conditions = VARCHAR
-- bmi = DOUBLE
-- age = INTEGER
-- DO NOT assume there is a separate table for conditions
-- ALWAYS use the patients table for age, gender, and conditions
-- Output ONLY a valid SQL query
-- SQL must start with SELECT
-- Do NOT explain anything
-- Do NOT use DROP, DELETE, UPDATE, INSERT, ALTER
-
-
-Question:
-{question}
-"""
-
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
-            {"role": "system", "content": "Convert questions into SQL queries."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0
-    )
-
-    return response.choices[0].message.content.strip()
-
-# -------- SQL Safety --------
-def is_safe_sql(sql):
-    sql = sql.lower()
-    forbidden = ["drop", "delete", "update", "insert", "alter"]
-    return sql.startswith("select") and not any(w in sql for w in forbidden)
-
-# -------- API --------
-@app.route("/ask", methods=["POST"])
-def ask():
-    question = request.json.get("question", "").strip()
-
-    if not question:
-        return jsonify({"answer": "❌ Question is required"}), 400
-
-    intent = classify_intent(question)
-
-    if intent == "chat":
-        return jsonify({
-            "answer": "🙂 I am a healthcare analytics assistant. Ask me about patients, prescriptions, and visits."
-        })
-
-    if intent == "invalid":
-        return jsonify({
-            "answer": "❌ I can only answer healthcare analytics related questions."
-        })
-
-    sql = question_to_sql(question)
-
-    if not is_safe_sql(sql):
-        return jsonify({"answer": "❌ Unsafe query blocked"}), 400
-
-    try:
-        result = con.execute(sql).fetchdf()
-        answer = format_readable(result)
-        return jsonify({"answer": answer})
-
-    except Exception as e:
-        return jsonify({"answer": f"❌ Error: {str(e)}"}), 500
-
-# -------- UI --------
-@app.route("/")
-def index():
+@app.get("/")
+def home():
     return render_template("index.html")
 
-# -------- Entry Point --------
+@app.get("/api/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "groq_configured": bool(os.getenv("GROQ_API_KEY")),
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "analytics_ready": analytics_engine.ready,
+        "rag_ready": rag_engine.ready,
+        "intent_model_ready": intent_engine.ready
+    })
+
+@app.get("/api/metrics")
+def metrics():
+    return jsonify(intent_engine.evaluate())
+
+@app.post("/api/ask")
+def ask():
+    payload = request.get_json(silent=True) or {}
+    question = str(payload.get("question", "")).strip()
+    if not question:
+        return jsonify({"error": "Please enter a question."}), 400
+    if len(question) > 1500:
+        return jsonify({"error": "Please keep the question under 1,500 characters."}), 400
+
+    intent_result = intent_engine.predict(question)
+    intent = intent_result["intent"]
+
+    try:
+        if intent == "analytics":
+            result = analytics_engine.ask(question)
+        elif intent == "knowledge":
+            result = rag_engine.ask(question)
+        elif intent == "chat":
+            lower = question.lower()
+            if any(term in lower for term in ["who are you", "what is your name", "introduce yourself", "tell me about yourself"]):
+                answer = "I'm S3 Agent, a healthcare information and analytics assistant. I use NLP to identify your question's intent, retrieve explanations from the healthcare knowledge base with RAG, and query structured hospital datasets with Text-to-SQL. I provide educational information and data analysis, not medical diagnosis."
+            elif any(term in lower for term in ["what can you do", "how can you help", "capabilities"]):
+                answer = "I can explain diseases, symptoms, hospital services and general medicine information using the healthcare reference library. I can also answer numerical questions about the available patient, visit and prescription datasets. Try asking 'What is hypertension?' or 'How many patients have diabetes?'"
+            elif any(term in lower for term in ["thank", "thanks"]):
+                answer = "You're welcome! Ask me a healthcare question or a question about the hospital datasets whenever you're ready."
+            elif any(term in lower for term in ["bye", "goodbye"]):
+                answer = "Goodbye! Take care, and feel free to return whenever you have a healthcare knowledge or dataset question."
+            else:
+                answer = "Hello! I'm S3 Agent. I can explain healthcare topics using the reference library and analyse structured hospital data. What would you like to know?"
+            result = {"answer": answer, "mode": "conversation", "sources": [], "sql": None}
+        else:
+            result = {
+                "answer": "I can help with healthcare dataset analytics or questions grounded in the available medical reference documents. Please try one of those topics.",
+                "mode": "out_of_scope",
+                "sources": [],
+                "sql": None
+            }
+        result["intent"] = intent
+        result["intent_confidence"] = round(intent_result["confidence"], 4)
+        result["intent_method"] = intent_result["method"]
+        return jsonify(result)
+    except Exception as exc:
+        app.logger.exception("Question processing failed")
+        return jsonify({
+            "error": str(exc),
+            "intent": intent,
+            "intent_confidence": round(intent_result["confidence"], 4)
+        }), 500
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=os.getenv("FLASK_DEBUG") == "1")

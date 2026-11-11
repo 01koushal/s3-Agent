@@ -1,127 +1,141 @@
-# S3 Agent
+# S3 Agent — Integrated NLP + Text-to-SQL + RAG
 
-S3 Agent is a lightweight Flask application that lets you query **Parquet files stored in AWS S3** using plain English.
-Instead of manually writing SQL, you can ask questions in natural language and get results instantly.
+This version combines the original S3 Agent healthcare analytics workflow with the retrieval architecture from Koushal-RAG-Agent.
 
-The app uses **DuckDB** to query Parquet files directly from S3 and an **LLM (Groq)** to translate questions into SQL.
+## Capabilities
 
----
-Deployment:https://s3-agent.onrender.com/
----
+- NLTK-based text normalization/tokenization
+- TF-IDF feature extraction and Logistic Regression intent classifier
+- Four intent classes: analytics, knowledge, chat, invalid
+- Large reproducible intent-data generator (`generate_intent_data.py`) with 2,000+ unique starter examples
+- Visible NLP intent badge and confidence on every assistant response
+- Chat-first interface with a fixed bottom message composer and newest messages at the bottom
+- Natural-language-to-SQL using Groq
+- Read-only SQL execution through DuckDB
+- RAG using Gemini embeddings, FAISS vector search, and Groq answer generation
+- Retrieved source filenames and similarity scores
+- Intent evaluation endpoint with accuracy, precision, recall, and F1
+- Unified Flask UI
 
-## What this project does
+## 1. Setup
 
-* Reads Parquet files directly from AWS S3
-* Converts natural language questions into SQL
-* Runs queries using DuckDB (no database setup required)
-* Returns results through a simple Flask API / UI
-
-This is mainly built as an **experiment / learning project** for working with:
-
-* S3 data
-* DuckDB
-* LLM-based query generation
-
----
-
-## Tech Used
-
-* Python
-* Flask
-* DuckDB
-* AWS S3
-* Groq LLM API
-
----
-
-## Project Structure
-
-```
-s3-Agent/
-│
-├── app.py            # Flask app and query logic
-├── requirements.txt  # Dependencies
-├── templates/
-│   └── index.html    # Basic UI
-└── README.md
-```
-
----
-
-## Setup
-
-### 1. Install dependencies
+Python 3.10–3.12 is recommended.
 
 ```bash
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 2. Set environment variables
+Copy `.env.example` to `.env` and add your API keys:
 
-```bash
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=your_region
-
-S3_PARQUET_PATH=s3://bucket-name/path/*.parquet
-GROQ_API_KEY=your_groq_api_key
+```env
+GROQ_API_KEY=...
+GEMINI_API_KEY=...
+GROQ_MODEL=openai/gpt-oss-20b
+GEMINI_EMBEDDING_MODEL=gemini-embedding-2
 ```
 
-> Credentials are expected to be provided via environment variables.
+Never commit `.env` or API keys.
 
----
+## 2. Generate the NLP training dataset
 
-## Run the app
+The repository includes `generate_intent_data.py`. Run it to create a larger, reproducible CSV for the TF-IDF + Logistic Regression classifier:
+
+```bash
+python generate_intent_data.py
+```
+
+It creates `data/intent_dataset.csv` with four labels: `chat`, `knowledge`, `analytics`, and `invalid`. The generated set contains over 2,000 unique template-based examples. It covers greetings and assistant identity, healthcare and hospital topics, diseases and medicine education, and numerical questions about structured records.
+
+**Important academic note:** this is synthetic template-based augmentation, not a collection of real user questions. Inspect and improve the examples, add manually written paraphrases, and create a separate manually labelled test CSV before reporting final accuracy/F1. A large generated dataset alone does not prove real-world generalisation.
+
+## 3. Healthcare analytics data
+
+The included `data/` folder contains a small synthetic demonstration dataset so the app can run immediately.
+
+For your original dataset, replace the demo CSVs with the original files from your S3 Agent repository:
+- `data/patients.csv`
+- `data/prescriptions.csv`
+- `data/visits.csv`
+
+The application detects these files automatically and loads them into DuckDB. The demo data is synthetic and must not be presented as real patient data.
+
+## 4. Knowledge base
+
+Place plain-text healthcare reference documents (`.txt`) inside `knowledge_base/`.
+The healthcare `.txt` files are the RAG knowledge base. Build and save their embeddings/index before running the app:
+
+```bash
+python build_embeddings.py
+```
+
+This reads every `.txt` file, chunks the content, creates Gemini embeddings, normalizes the vectors, and saves the FAISS index plus chunk metadata:
+- `storage/medical.faiss`
+- `storage/chunks.pkl`
+
+This is the same general workflow as your Koushal-RAG-Agent: documents → chunks → Gemini embeddings → FAISS index → similarity retrieval. The app loads the saved index when it starts. If you add or edit healthcare `.txt` files, run `python build_embeddings.py` again to rebuild it. Do not commit API keys; the generated index files may be committed if you deliberately want the repository to include the prebuilt index.
+
+Use reputable, permitted reference material. Do not upload identifiable patient records into the RAG knowledge base.
+
+## 5. Run
+
+After building the embeddings, start Flask:
 
 ```bash
 python app.py
 ```
 
-Then open:
+Open `http://127.0.0.1:5000`.
 
-```
-http://localhost:5000
-```
+## 6. Example questions
 
----
+### Analytics
+- How many patients have diabetes?
+- Show female patients older than 40.
+- Calculate the average BMI.
+- What are the most common prescriptions?
 
-## Example Queries
+### Knowledge retrieval
+- What are common risk factors for diabetes?
+- Explain the symptoms of hypertension.
+- What are warning signs of stroke?
 
-You can ask questions like:
+### Chat / out-of-scope
+- Hi, who are you?
+- What can you do?
+- Explain the hospital outpatient department
+- What precautions matter when using antibiotics?
+- Tell me a joke (out of scope)
 
-* How many patients have diabetes?
-* How many male patients are there?
-* Show patients from Delhi
-* List patients with alcohol drinking habit
+## 7. API
 
-The app will automatically generate SQL and return the results.
+- `GET /api/health` — service and configuration status
+- `GET /api/metrics` — intent classifier holdout evaluation
+- `POST /api/ask` — `{"question": "..."}`
 
----
+The response includes the predicted intent, confidence, classification method, selected processing mode, answer, and (when relevant) SQL, result rows, retrieved sources, and similarity scores. The chat interface keeps the composer fixed at the bottom and scrolls the newest messages into view.
 
-## How it works (simple explanation)
+## 8. Academic evaluation checklist
 
-1. User enters a question
-2. The LLM converts it into a SQL query
-3. DuckDB runs the query directly on S3 Parquet files
-4. Results are sent back to the UI / API
+Do not report placeholder or invented results. Run the evaluation endpoint and test the system using a separate manually labelled test set.
 
-No data is copied locally.
+Recommended experiments:
+1. Compare TF-IDF + Logistic Regression against LLM intent classification on the same held-out examples.
+2. Report accuracy, precision, recall, and macro-F1 for intent classification.
+3. Prepare question-to-SQL test cases with expected SQL/results and report execution accuracy.
+4. For RAG, manually label relevant source passages and measure Precision@K / Recall@K.
+5. Compare answers with and without retrieved context, checking factual grounding and source attribution.
+6. Record latency and API usage for each route.
 
----
+## Notes and limitations
 
-## Notes
-
-* This project is intended for learning and experimentation
-* Error handling and security can be improved
-* Not production-ready in its current form
-
----
-
-## Possible Improvements
-
-* Better prompt control for SQL generation
-* Authentication and access control
-* Query history and logging
-* UI improvements
-
-
+- The generated intent examples are template-based augmentation, not real user questions. The very high holdout score on these examples may reflect template similarity; do not use it as a claim of real-world accuracy. Create a separate manually labelled test set.
+- RAG requires both API keys and internet access for Gemini embeddings and Groq generation.
+- Analytics requires GROQ_API_KEY. Without original CSVs, a clearly synthetic demo dataset is loaded.
+- SQL safety checks are defensive application checks, not a complete security boundary. Use a restricted read-only database and review generated SQL before production use.
+- This is an educational analytics and document-retrieval system, not a medical diagnostic system.
